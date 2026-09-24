@@ -69,6 +69,8 @@ Three doors into the same pipeline (`captured → angled → synced`):
 python -m agents.capture_agent.run process "System design maps to identity building"
 ```
 
+If Gemini fails mid-run (e.g. `503 UNAVAILABLE`, high demand), the idea is already saved — don't re-run `process "..."` (that captures it twice). Find it with `list` and retry with `process-id <idea_id>`.
+
 **PC, quick capture** — when you just want the thought saved (no LLM call, no Notion) and will process later:
 
 ```powershell
