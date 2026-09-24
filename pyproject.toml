@@ -27,3 +27,4 @@ include = ["core*", "agents*", "pipelines*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
