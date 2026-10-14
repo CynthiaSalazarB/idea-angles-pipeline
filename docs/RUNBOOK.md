@@ -17,9 +17,6 @@ Almost every command accepts `--dry-run` (preview, writes nothing) and `-v` (ver
 
 | I want to… | Run | How often |
 |------------|-----|-----------|
-| Get today's news into Notion | *nothing* — GitHub Action does it every morning | automatic |
-| Re-run news manually (Action failed / PC testing) | `python orchestrator.py --steps news,sync` | rarely |
-| Read today's digest without Notion | `python -m agents.news_scraper.view` | optional |
 | Capture an idea from my phone | *nothing* — Telegram bot on the VM does capture → angles → Notion | automatic |
 | Capture + fully process an idea from my PC | `python -m agents.capture_agent.run process "idea text"` | whenever |
 | Quick-capture only (no AI, no Notion yet) | `python -m agents.capture_agent.run capture "idea text"` | whenever |
@@ -31,29 +28,9 @@ Almost every command accepts `--dry-run` (preview, writes nothing) and `-v` (ver
 
 ---
 
-## Daily news (usually zero commands)
+## Daily news
 
-The GitHub Action (`.github/workflows/daily-news.yml`) runs every morning with your PC off: scrape → filter → push new articles to the Notion News Dashboard → delete pages older than 30 days. You just open Notion's **Today** view.
-
-Manual equivalents, when you need them:
-
-```powershell
-# Full pipeline locally (same as the Action)
-python orchestrator.py --steps news,sync
-
-# Scraper only → data/news/YYYY-MM-DD.json
-python -m agents.news_scraper.run
-
-# Sync only (today's JSON → Notion, + 30-day retention delete)
-python -m agents.sync_agent.run
-python -m agents.sync_agent.run --date 2026-07-08      # a specific day's JSON
-python -m agents.sync_agent.run --retention-days 60    # custom window (0 = keep everything)
-
-# Local HTML digest (no Notion needed)
-python -m agents.news_scraper.view                      # then open data/news/digest.html
-```
-
-**When to use which:** you almost never run these. Use `orchestrator --steps news,sync` if the Action failed or you want news *now*; use `view` if you want to read the digest without opening Notion.
+Moved to its own repo, [news-digest](https://github.com/CynthiaSalazarB/news-digest), on 2026-10-14. Its runbook lives there.
 
 ---
 
@@ -126,15 +103,12 @@ Safe to re-run anytime (already-imported ideas are skipped). Strictly one-way: n
 
 ```powershell
 pytest                                          # test suite — run after any code change
-python orchestrator.py --steps news,sync --dry-run    # preview any step without writing
+python orchestrator.py --steps angles,ideas-push,ideas-pull --dry-run   # preview without writing
 git pull                                        # on the VM, after pushing changes (then restart the bot)
 ```
-
-Retention needs no attention: news pages older than 30 days are deleted by every sync run (to Notion trash — empty it in the Notion UI if you ever care).
 
 ## Something's broken?
 
 - Sync/Notion errors → [.claude/skills/sync-agent/SKILL.md](../.claude/skills/sync-agent/SKILL.md) troubleshooting table
-- Scraper/feeds → [.claude/skills/news-scraper/SKILL.md](../.claude/skills/news-scraper/SKILL.md)
 - Capture/pipeline → [.claude/skills/capture-agent/SKILL.md](../.claude/skills/capture-agent/SKILL.md)
 - Angles/Gemini → [.claude/skills/script-angles-agent/SKILL.md](../.claude/skills/script-angles-agent/SKILL.md)

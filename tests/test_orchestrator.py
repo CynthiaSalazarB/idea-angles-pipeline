@@ -1,18 +1,18 @@
 from unittest.mock import patch
 
 from core.models.idea import Idea, IdeaContent
-from core.models.news_item import Source
+from core.models.source import Source
 from core.models.run import RunContext, RunResult
 from core.storage.sqlite_store import SqliteStore
 from orchestrator import STEP_REGISTRY, main
 
 
 def test_unknown_step_fails():
-    assert main(["--steps", "news,bogus"]) == 1
+    assert main(["--steps", "angles,bogus"]) == 1
 
 
 def test_registry_has_documented_steps():
-    assert set(STEP_REGISTRY) == {"news", "sync", "angles", "ideas-push", "ideas-pull"}
+    assert set(STEP_REGISTRY) == {"angles", "ideas-push", "ideas-pull"}
 
 
 def test_angles_step_drains_captured_queue(tmp_path):

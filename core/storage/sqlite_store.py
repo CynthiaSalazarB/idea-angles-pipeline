@@ -9,11 +9,7 @@ from core.paths import DB_PATH
 
 
 class SqliteStore:
-    """Canonical store for persistent ideas.
-
-    Daily news is disposable (today-only JSON via core/storage/json_store.py)
-    and is never written here.
-    """
+    """Canonical store for persistent ideas."""
 
     def __init__(self, db_path: Path | None = None) -> None:
         self.db_path = db_path or DB_PATH

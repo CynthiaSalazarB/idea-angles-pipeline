@@ -1,5 +1,5 @@
 from core.models.idea import Idea, IdeaContent
-from core.models.news_item import Source
+from core.models.source import Source
 from core.storage.sqlite_store import SqliteStore
 
 

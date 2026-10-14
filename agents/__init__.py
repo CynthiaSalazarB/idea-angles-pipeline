@@ -1,1 +1,1 @@
-"""News scraper — RSS ingest, dedup, keyword filter, JSON output."""
+"""Pipeline agents: capture, script angles, Notion sync."""

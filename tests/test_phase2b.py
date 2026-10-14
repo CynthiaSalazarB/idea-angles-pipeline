@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from agents.sync_agent.notion_ideas_sync import idea_to_properties
 from core.models.idea import BrandFit, Idea, IdeaContent
-from core.models.news_item import Source
+from core.models.source import Source
 from pipelines.idea_pipeline import process_idea
 from core.storage.sqlite_store import SqliteStore
 

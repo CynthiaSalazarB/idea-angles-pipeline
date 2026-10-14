@@ -16,7 +16,7 @@ import urllib.request
 from dotenv import load_dotenv
 
 from core.models.idea import Idea
-from core.models.news_item import Source
+from core.models.source import Source
 from core.paths import ENV_PATH
 from core.storage.sqlite_store import SqliteStore
 from pipelines.idea_pipeline import capture_and_process

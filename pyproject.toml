@@ -5,12 +5,10 @@ description = "Capture a raw idea, score it against a personal brand, get on-bra
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "feedparser>=6.0.11",
     "notion-client>=2.2.1",
     "pydantic>=2.0",
     "python-dotenv>=1.0.0",
     "pyyaml>=6.0",
-    "tzdata>=2024.1",
     "google-genai>=1.0.0",
 ]
 

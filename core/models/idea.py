@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from core.models.news_item import Source
+from core.models.source import Source
 
 IdeaProcessingStatus = Literal[
     "captured",

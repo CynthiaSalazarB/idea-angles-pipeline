@@ -2,7 +2,7 @@
 
 A local-first, modular, human-in-the-loop Python system. Capture a raw idea from anywhere, get it scored against a personal brand definition, and get 2–3 on-brand script angles back in a Notion Idea Bank. **AI curates, the human decides.**
 
-Any thought, typed on the PC or sent to a Telegram bot from the phone, becomes a captured idea, gets scored against a personal brand definition, and shows up in a Notion Idea Bank with 2–3 suggested script angles and an advisory brand-fit %. The human Status field is the only gate: the AI never approves, publishes, or decides. Alongside it, a scheduled GitHub Action keeps a filtered news feed fresh in Notion every morning, with the PC off.
+Any thought, typed on the PC or sent to a Telegram bot from the phone, becomes a captured idea, gets scored against a personal brand definition, and shows up in a Notion Idea Bank with 2–3 suggested script angles and an advisory brand-fit %. The human Status field is the only gate: the AI never approves, publishes, or decides. The daily news feed that used to live here moved to its own repo, [news-digest](https://github.com/CynthiaSalazarB/news-digest), on 2026-10-14.
 
 ![Notion Idea Bank: captured ideas with AI-generated script angles, an advisory brand-fit %, and the lane each idea belongs to](docs/assets/notion-idea-bank.png)
 
@@ -23,49 +23,41 @@ Any thought, typed on the PC or sent to a Telegram bot from the phone, becomes a
 ```mermaid
 flowchart LR
   subgraph Inputs
-    RSS["RSS feeds"]
     TG["Telegram (phone)"]
     CLI["CLI capture"]
   end
 
   subgraph Cloud["Cloud (works with the PC off)"]
-    GHA["GitHub Actions\nscheduled daily run"]
     VM["GCP VM\nTelegram capture bot"]
   end
 
   subgraph Engine["Python engine (local store = canonical)"]
-    NS["news_scraper\nfetch · dedup · keyword filter"]
     CA["capture_agent"]
     SAA["script_angles_agent\nGemini + brand config"]
-    ST[("local store\ndaily JSON + SQLite")]
+    ST[("local store\nSQLite")]
     SY["sync_agent"]
   end
 
   subgraph Notion["Notion (human review)"]
-    ND["News Dashboard\nrolling 30 days"]
     IB["Idea Bank"]
   end
 
-  RSS --> NS --> ST
   CLI --> CA --> ST
   TG --> VM
   VM -->|"ideas pull-remote\n(one-way drain)"| ST
-  GHA -.->|"runs the same engine daily\n(news → Notion)"| NS
   ST --> SAA --> ST
   ST --> SY
-  SY --> ND
   SY <-->|"push angles / pull decisions"| IB
 ```
 
 
 
-1. **Awareness** — `news_scraper` pulls RSS feeds, dedupes by URL, filters noise with keyword rules (no LLM needed), and writes a daily digest. A scheduled GitHub Action syncs it to a Notion News Dashboard that keeps a rolling 30-day window.
-2. **Capture** — ideas enter through three doors: CLI one-shot, CLI quick-capture, or a Telegram bot running on a GCP VM (so the phone works with the PC off). Everything lands in one canonical local SQLite DB.
-3. **Angles** — `script_angles_agent` reads `config/personal_brand.md` and asks Gemini for 2–3 short-form content angles per idea, plus an advisory brand-fit score.
-4. **Review** — `sync_agent` pushes ideas to a Notion Idea Bank and pulls the human's Approve/Reject decisions back into the local store.
-5. **Orchestrate** — every module is an idempotent `run(ctx) -> RunResult` step in a registry; `orchestrator.py` chains them: `--steps news,sync` or `--steps angles,ideas-push,ideas-pull`.
+1. **Capture** — ideas enter through three doors: CLI one-shot, CLI quick-capture, or a Telegram bot running on a GCP VM (so the phone works with the PC off). Everything lands in one canonical local SQLite DB.
+2. **Angles** — `script_angles_agent` reads `config/personal_brand.md` and asks Gemini for 2–3 short-form content angles per idea, plus an advisory brand-fit score.
+3. **Review** — `sync_agent` pushes ideas to a Notion Idea Bank and pulls the human's Approve/Reject decisions back into the local store.
+4. **Orchestrate** — every module is an idempotent `run(ctx) -> RunResult` step in a registry; `orchestrator.py` chains them: `--steps angles,ideas-push,ideas-pull`.
 
-The same engine runs in three places: **your machine** (the canonical store), a **GitHub Action** (the daily news run, so the dashboard is fresh with the PC off), and a small **GCP VM** hosting the Telegram bot — whose captures drain one-way into the local DB via `ideas pull-remote`. The full system design (module inventory, schemas, layering rules) lives in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The same engine runs in two places: **your machine** (the canonical store) and a small **GCP VM** hosting the Telegram bot — whose captures drain one-way into the local DB via `ideas pull-remote`. The full system design (module inventory, schemas, layering rules) lives in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
@@ -102,13 +94,6 @@ copy config\personal_brand.example.md config\personal_brand.md   # fill in your 
 pytest
 ```
 
-Try it without any keys — the scraper is deterministic and local:
-
-```powershell
-python -m agents.news_scraper.run          # → data/news/YYYY-MM-DD.json
-python -m agents.news_scraper.view         # → data/news/digest.html
-```
-
 With `.env` filled in, run the content pipeline:
 
 ```powershell
@@ -126,25 +111,23 @@ Day-to-day operation (which command, when, and what runs automatically): **[docs
 
 ```
 idea-angles-pipeline/
-├── orchestrator.py              # step registry: news, sync, angles, ideas-push, ideas-pull
+├── orchestrator.py              # step registry: angles, ideas-push, ideas-pull
 ├── pipelines/                   # cross-module composition (capture → angles → Notion)
 ├── agents/
-│   ├── news_scraper/            # deterministic pipeline (no LLM)
-│   ├── sync_agent/              # Notion push/pull + retention
+│   ├── sync_agent/              # Notion Idea Bank push/pull
 │   ├── capture_agent/           # CLI + Telegram bot entry points
 │   └── script_angles_agent/     # Gemini + brand config → angles
 ├── core/                        # shared foundation (never imports agents)
-│   ├── models/                  # Pydantic v2 entities (NewsItem, Idea, RunContext)
-│   ├── storage/                 # SQLite (ideas) + JSON (daily news)
+│   ├── models/                  # Pydantic v2 entities (Idea, Source, RunContext)
+│   ├── storage/                 # SQLite (ideas)
 │   └── llm/                     # Gemini client + routing
 ├── config/
-│   ├── news_sources.yaml        # feeds + keyword filters
 │   ├── llm_routing.yaml         # which model for which task
 │   ├── personal_brand.example.md  # template — copy to personal_brand.md (gitignored)
 │   └── personal_brand.md        # your brand definition (local only)
 ├── docs/                        # VISION · ARCHITECTURE · RUNBOOK · WHATS-NEXT
 ├── tests/
-└── data/                        # gitignored — your news + ideas stay local
+└── data/                        # gitignored — your ideas stay local
 ```
 
 Scrapers (deterministic, no LLM) vs. agents (LLM/decision logic) is a deliberate naming distinction. Layering is enforced: `core/` imports nothing above it, modules only import `core/`, and only `pipelines/` + `orchestrator.py` may compose multiple agents.
@@ -158,8 +141,8 @@ Scrapers (deterministic, no LLM) vs. agents (LLM/decision logic) is a deliberate
 
 | Phase | Focus                                                                                | Status       |
 | ----- | ------------------------------------------------------------------------------------ | ------------ |
-| 0     | News scraper (RSS, dedup, keyword filter)                                            | ✅            |
-| 1     | Notion News Dashboard + daily GitHub Action                                          | ✅            |
+| 0     | News scraper (RSS, dedup, keyword filter), now in [news-digest](https://github.com/CynthiaSalazarB/news-digest) | ✅ moved out  |
+| 1     | Notion News Dashboard + daily GitHub Action, moved out with it                       | ✅ moved out  |
 | 2a    | Brand config + Gemini script angles + CLI capture                                    | ✅            |
 | 2b    | Notion Idea Bank + advisory brand fit %                                              | ✅            |
 | 2c    | Telegram capture from phone (bot on GCP VM)                                          | ✅            |

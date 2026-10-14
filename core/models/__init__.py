@@ -1,17 +1,4 @@
 from core.models.idea import Idea
-from core.models.news_item import (
-    Classification,
-    Content,
-    NewsItem,
-    Processing,
-    Source,
-)
+from core.models.source import Source
 
-__all__ = [
-    "Classification",
-    "Content",
-    "Idea",
-    "NewsItem",
-    "Processing",
-    "Source",
-]
+__all__ = ["Idea", "Source"]

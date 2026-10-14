@@ -1,12 +1,12 @@
 # Idea Angles Pipeline — System Architecture
 
-A local, modular, human-in-the-loop pipeline that turns captured ideas into on-brand script angles, with a filtered daily news feed alongside it.
+A local, modular, human-in-the-loop pipeline that turns captured ideas into on-brand script angles. The daily news feed that used to run alongside it moved to its own repo, [news-digest](https://github.com/CynthiaSalazarB/news-digest), on 2026-10-14.
 
 ---
 
 ## Vision
 
-Idea Angles Pipeline helps a full-stack creative engineer curate news, capture raw ideas, and transform them into on-brand content — without over-engineering or cognitive fatigue.
+Idea Angles Pipeline helps a full-stack creative engineer capture raw ideas and transform them into on-brand content — without over-engineering or cognitive fatigue.
 
 **Target audience:** Tech students, creatives learning programming, and people interested in systemic productivity and AI.
 
@@ -132,14 +132,12 @@ External inputs (RSS, CLI, future channels)
 ```mermaid
 flowchart TB
   subgraph inputs [Inputs]
-    RSS[RSS feeds]
     CLI[CLI capture]
     Telegram[Telegram bot on GCP VM]
     Future[Future: notes Obsidian]
   end
   subgraph runtime [Local Python Runtime]
     Orchestrator[orchestrator.py]
-    NewsScraper[news_scraper]
     CaptureAgent[capture_agent]
     ScriptAngles[script_angles_agent]
     MarketResearch[market_research_agent]
@@ -147,7 +145,6 @@ flowchart TB
     SyncAgent[sync_agent]
   end
   subgraph storage [Shared Storage]
-    JSON[JSON Phase 0]
     SQLite[SQLite Phase 1+]
     Vectors[Vector index Phase 3]
   end
@@ -155,15 +152,12 @@ flowchart TB
     Notion[Notion dashboards]
     You[You approve reject edit]
   end
-  RSS --> NewsScraper
   CLI --> CaptureAgent
   Telegram --> CaptureAgent
   Future -.-> CaptureAgent
-  Orchestrator --> NewsScraper
   Orchestrator --> CaptureAgent
   Orchestrator --> ScriptAngles
   Orchestrator --> SyncAgent
-  NewsScraper --> storage
   CaptureAgent --> storage
   ScriptAngles --> storage
   MemoryAgent --> storage
@@ -224,8 +218,7 @@ flowchart TB
 
 | Module                  | Type    | Phase | Status                           | Responsibility                                                            |
 | ----------------------- | ------- | ----- | -------------------------------- | ------------------------------------------------------------------------- |
-| `news_scraper`          | Scraper | 0     | built                            | RSS ingest, dedup, keyword filter                                         |
-| `sync_agent`            | Agent   | 1     | built                            | Notion push/pull (News Dashboard + Idea Bank) + `ideas pull-remote` drain |
+| `sync_agent`            | Agent   | 1     | built                            | Notion Idea Bank push/pull + `ideas pull-remote` drain        |
 | `capture_agent`         | Scraper | 2     | built                            | CLI + Telegram raw idea intake (bot deployed on GCP VM)                   |
 | `script_angles_agent`   | Agent   | 2     | built                            | Framework-based hooks, angles, advisory brand fit % (Gemini)              |
 | `market_research_agent` | Agent   | 3     | planned — folder not yet created | Niche trend pattern extraction                                            |
@@ -272,8 +265,6 @@ def run(ctx: RunContext) -> RunResult:
 
 | Step         | Function                               | Consumes → produces                                                            |
 | ------------ | -------------------------------------- | ------------------------------------------------------------------------------ |
-| `news`       | `agents.news_scraper.run.run`          | RSS feeds → today's filtered JSON                                              |
-| `sync`       | `agents.sync_agent.run.run`            | latest daily JSON → Notion News Dashboard (incremental by URL + 30-day delete) |
 | `angles`     | `agents.script_angles_agent.run.run`   | ideas `captured` → `angled`                                                    |
 | `ideas-push` | `agents.sync_agent.ideas_run.run_push` | ideas `angled` (unsynced) → Notion Idea Bank, → `synced`                       |
 | `ideas-pull` | `agents.sync_agent.ideas_run.run_pull` | Notion Status → `human.decision` in SQLite                                     |
@@ -284,14 +275,11 @@ Adding a module = implement `run(ctx)` + one entry in `STEP_REGISTRY` in `orches
 ### Orchestrator usage
 
 ```powershell
-# Morning news
-python orchestrator.py --steps news,sync
-
 # Idea pipeline (drain captured ideas → angles → Notion, pull decisions)
 python orchestrator.py --steps angles,ideas-push,ideas-pull
 
 # Preview any step
-python orchestrator.py --steps news,sync --dry-run
+python orchestrator.py --steps angles,ideas-push,ideas-pull --dry-run
 ```
 
 
@@ -308,7 +296,7 @@ python orchestrator.py --steps news,sync --dry-run
 4. **Orchestrator knows execution order only** — no business logic.
 5. **Each step is idempotent** — status-driven queues mean a failed item stays in its previous status and is retried next run.
 6. **Failures are isolated** — a failing step logs, reports `ok=False`, and the remaining steps still run.
-7. **Partial runs supported** — `--steps news` for debugging single modules.
+7. **Partial runs supported** — `--steps angles` for debugging single modules.
 
 ---
 
@@ -337,22 +325,19 @@ idea-angles-pipeline/
 ├── .claude/
 │   └── skills/                     # per-module run/debug skills
 ├── agents/                         # Phase 3 will add market_research_agent/, memory_agent/
-│   ├── news_scraper/               # Phase 0 (scraper)
 │   ├── sync_agent/                 # Phase 1 (+ notion_common.py shared plumbing)
 │   ├── capture_agent/              # Phase 2 (CLI + telegram_run.py)
 │   └── script_angles_agent/        # Phase 2 (angles + advisory brand fit %)
 ├── core/
-│   ├── models/                     # NewsItem, Idea, RunContext/RunResult (run.py)
-│   ├── storage/                    # json_store.py (daily news) + sqlite_store.py (ideas)
+│   ├── models/                     # Idea, Source, RunContext/RunResult (run.py)
+│   ├── storage/                    # sqlite_store.py (ideas)
 │   ├── llm/                        # routing.yaml loader + Gemini client + brand context
 │   └── paths.py
 ├── config/
-│   ├── news_sources.yaml           # Phase 0
 │   ├── personal_brand.example.md   # committed template
 │   ├── personal_brand.md           # Phase 2a (gitignored — your real brand)
 │   └── llm_routing.yaml            # Phase 2
 └── data/                           # gitignored
-    ├── news/                       # disposable today-only JSON + seen.json
     └── cynthia.db                  # persistent ideas (SQLite)
 ```
 
@@ -363,6 +348,8 @@ idea-angles-pipeline/
 ## Build Phases
 
 > Phases 0–2c are **done**; the forward view lives in [WHATS-NEXT.md](WHATS-NEXT.md). The sections below are kept as the build plan of record, annotated where reality diverged.
+>
+> **2026-10-14:** the Phase 0 and Phase 1 news work (scraper, News Dashboard sync, daily GitHub Action) moved to its own repo, [news-digest](https://github.com/CynthiaSalazarB/news-digest). Those sections stay below as history.
 
 
 
@@ -532,7 +519,7 @@ idea-angles-pipeline/
 
 ## Data Schemas
 
-All entities share a common envelope (`id`, `type`, `created_at`, `updated_at`, `source`). Persistent entities (`Idea`) also carry a `sync` block and are stored in SQLite as JSON columns; short-lived entities (`NewsItem`) deliberately omit `sync` — daily news lives in today-only JSON locally, and Notion (not the local store) holds the rolling 30-day archive, deduped by URL at push time.
+All entities share a common envelope (`id`, `type`, `created_at`, `updated_at`, `source`). Persistent entities (`Idea`) also carry a `sync` block and are stored in SQLite as JSON columns.
 
 ### Shared primitives
 
@@ -558,41 +545,7 @@ All entities share a common envelope (`id`, `type`, `created_at`, `updated_at`, 
 
 ### NewsItem
 
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "type": "news_item",
-  "created_at": "2026-05-31T08:00:00Z",
-  "updated_at": "2026-05-31T08:15:00Z",
-  "source": {
-    "type": "rss",
-    "name": "Reuters Markets",
-    "url": "https://feeds.reuters.com/...",
-    "external_id": "article-guid"
-  },
-  "content": {
-    "title": "Fed signals rate hold amid inflation data",
-    "summary": "Short extracted summary...",
-    "body_excerpt": "First 500 chars if available",
-    "url": "https://...",
-    "published_at": "2026-05-31T07:30:00Z",
-    "language": "en"
-  },
-  "classification": {
-    "category": "ai_tech | macro | markets | geopolitics | other",
-    "tags": ["fed", "rates", "inflation"],
-    "relevance_score": 0.82,
-    "noise_score": 0.15
-  },
-  "processing": {
-    "status": "raw | filtered | discarded",
-    "pipeline_version": "0.1",
-    "agent_runs": []
-  }
-}
-```
-
-> `NewsItem` deliberately has **no** `sync`, `human`, or brand-mapping blocks — daily news is disposable (today-only JSON; Notion holds the rolling 30-day window, deduped by URL at push time). A future news→angles helper would *link* a news item into a new `Idea` rather than enrich the `NewsItem`. See `core/models/news_item.py`.
+Moved with the news feed to [news-digest](https://github.com/CynthiaSalazarB/news-digest).
 
 
 
@@ -768,8 +721,7 @@ Swap models in config without touching module code (`core/llm/routing.py` + `gem
 
 | Skill                 | Triggers when                    | Purpose          |
 | --------------------- | -------------------------------- | ---------------- |
-| `news-scraper`        | Run news, add feed, tune filters | Phase 0 pipeline |
-| `sync-agent`          | Notion sync issues               | Phase 1          |
+| `sync-agent`          | Notion Idea Bank sync issues     | Phase 2b         |
 | `capture-agent`       | Capture/process ideas            | Phase 2          |
 | `script-angles-agent` | Angle output tuning              | Phase 2          |
 
@@ -783,7 +735,6 @@ Skills live in `.claude/skills/`. Each module gets its own skill as it is built.
 | ----------------------------------- | ------- | ------------------ |
 | Setting up Notion DB schema in chat | Yes     | —                  |
 | Daily unattended sync to Notion     | —       | Yes (`sync_agent`) |
-| Phase 0 news scraping               | No      | RSS is plain HTTP  |
 | Debugging Notion page properties    | Yes     | —                  |
 
 
@@ -828,9 +779,9 @@ Examples of future modules: finance tracker, learning log, email digest — each
 ## Storage policy
 
 - **What is stored:** title, summary, URL, scores, metadata — not full HTML or media
-- **News retention:** local JSON is today-only; the Notion News Dashboard is a **rolling 30-day window** — incremental push deduped by URL, pages older than 30 days deleted on each sync (`--retention-days`, 0 disables). Deletion moves pages to Notion trash (the public API cannot hard-delete; empty trash in the Notion UI if desired). "Today" and "Archive" are filtered views on the `Synced` date.
+- **News retention:** moved with the news feed to [news-digest](https://github.com/CynthiaSalazarB/news-digest).
 - **Ideas retention:** append-only in SQLite; survive indefinitely
-- **Canonical store:** local SQLite (ideas); **Notion** = human dashboard + news archive; **GitHub Actions** = cloud runner (not long-term DB host)
+- **Canonical store:** local SQLite (ideas); **Notion** = human review dashboard
 - **Remote capture drain (2026-07-07):** the GCP VM running the Telegram bot has its own SQLite — it is a **capture inbox, never canonical**. `ideas pull-remote --from <fetched-copy>` merges it into local `data/cynthia.db` (upsert by UUID, newer `updated_at` wins, idempotent). Strictly one-way: local never syncs ideas back to the VM. One canonical store is what future notes/embedding/memory modules (Phase 3) will index.
 
 ---

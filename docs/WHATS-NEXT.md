@@ -7,8 +7,8 @@
 
 | Phase | What it added                                                                       |
 | ----- | ----------------------------------------------------------------------------------- |
-| 0     | RSS news scraper — fetch → dedup → keyword filter → daily JSON digest               |
-| 1     | Notion News Dashboard + daily GitHub Action (rolling 30-day window)                 |
+| 0     | RSS news scraper (moved to its own repo, news-digest, 2026-10-14)                   |
+| 1     | Notion News Dashboard + daily GitHub Action (moved with it)                         |
 | 2a    | Brand config + Gemini script-angles agent + CLI idea capture                        |
 | 2b    | Notion Idea Bank pipeline with advisory brand-fit % (human Status is the only gate) |
 | 2c    | Telegram capture bot on a GCP VM + one-way drain into the canonical local DB        |
@@ -21,7 +21,6 @@
 The pipeline covers the job it was scoped to do. Expect small improvements to angle quality, dependency upkeep, and fixes — not new subsystems.
 
 - **Angle quality** — tighten the hook seed so it stays anchored to the raw capture instead of drifting.
-- **News → angles helper** — run a news item through the brand filter, the one Phase 2a item still open.
 
 
 

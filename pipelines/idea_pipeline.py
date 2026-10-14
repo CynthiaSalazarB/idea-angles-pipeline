@@ -15,7 +15,7 @@ from agents.capture_agent.run import capture_idea
 from agents.script_angles_agent.run import run_script_angles
 from agents.sync_agent.notion_ideas_sync import NotionIdeaSync
 from core.models.idea import Idea
-from core.models.news_item import Source
+from core.models.source import Source
 from core.storage.sqlite_store import SqliteStore
 
 

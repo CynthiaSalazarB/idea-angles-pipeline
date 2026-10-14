@@ -16,18 +16,6 @@ from typing import Callable
 from core.models.run import RunContext, RunResult
 
 
-def _news(ctx: RunContext) -> RunResult:
-    from agents.news_scraper.run import run
-
-    return run(ctx)
-
-
-def _sync(ctx: RunContext) -> RunResult:
-    from agents.sync_agent.run import run
-
-    return run(ctx)
-
-
 def _angles(ctx: RunContext) -> RunResult:
     from agents.script_angles_agent.run import run
 
@@ -47,8 +35,6 @@ def _ideas_pull(ctx: RunContext) -> RunResult:
 
 
 STEP_REGISTRY: dict[str, Callable[[RunContext], RunResult]] = {
-    "news": _news,
-    "sync": _sync,
     "angles": _angles,
     "ideas-push": _ideas_push,
     "ideas-pull": _ideas_pull,
